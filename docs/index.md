@@ -4,6 +4,9 @@ icon: lucide/home
 
 # pydantic-ai-web-models
 
+[![PyPI](https://img.shields.io/pypi/v/pydantic-ai-web-models)](https://pypi.org/project/pydantic-ai-web-models/)
+[![Python](https://img.shields.io/pypi/pyversions/pydantic-ai-web-models)](https://pypi.org/project/pydantic-ai-web-models/)
+
 !!! danger "Educational project — read before using"
     This project was created for **personal learning and educational purposes only**. It is not
     intended for production use, nor does it encourage or endorse circumventing any terms of

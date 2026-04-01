@@ -1,10 +1,28 @@
 # pydantic_ai_web_models
 
+[![PyPI](https://img.shields.io/pypi/v/pydantic-ai-web-models)](https://pypi.org/project/pydantic-ai-web-models/)
+[![Python](https://img.shields.io/pypi/pyversions/pydantic-ai-web-models)](https://pypi.org/project/pydantic-ai-web-models/)
+[![Docs](https://img.shields.io/badge/docs-eugenzor.github.io-blue)](https://eugenzor.github.io/pydantic-ai-web-models/)
+
 > **Disclaimer:** This project was created for **personal learning and educational purposes only**. It is not intended for production use, nor does it encourage or endorse circumventing any terms of service. The author makes no warranties and accepts no liability for any misuse. Users are solely responsible for ensuring their usage complies with the terms of service of OpenAI, Google, and any other third-party services they interact with.
 
 A lightweight [Pydantic AI](https://ai.pydantic.dev/) model provider that routes requests to web-based LLMs (OpenAI, Google) through [Temporal](https://temporal.io/) workflows. No API keys needed — the Temporal worker handles browser-based LLM access.
 
+**Documentation:** https://eugenzor.github.io/pydantic-ai-web-models/
+
 > **Important:** This package provides **only the Pydantic AI model provider** (the client side). It does **not** include the Temporal workflows required to actually execute LLM requests. You must develop and deploy your own Temporal worker that implements the `LLMInvokeWorkflow` workflow type. Without a running worker that handles browser-based LLM access, this package cannot function on its own.
+
+## Installation
+
+```bash
+pip install pydantic-ai-web-models
+```
+
+or with uv:
+
+```bash
+uv add pydantic-ai-web-models
+```
 
 ## Prerequisites
 
