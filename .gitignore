@@ -84,3 +84,6 @@ Thumbs.db
 
 # Local-only agent settings (Cursor, etc.)
 .claude/settings.local.json
+
+# Local file for testing
+test.py
