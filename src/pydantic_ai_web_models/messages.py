@@ -20,12 +20,17 @@ logger = logging.getLogger(__name__)
 def format_messages(
     messages: list[ModelMessage],
     instructions: str | None = None,
+    *,
+    skip_system_prompt: bool = False,
 ) -> str:
     """Convert pydantic-ai messages into a single text prompt.
 
     Args:
         messages: List of pydantic-ai ModelMessage objects.
         instructions: Optional system instructions to prepend.
+        skip_system_prompt: When True, omit the system-instructions block and all
+            ``SystemPromptPart`` content (and ``instructions``). Conversation
+            turns are formatted as usual.
 
     Returns:
         A formatted prompt string.
@@ -35,14 +40,15 @@ def format_messages(
     assistant_texts: list[str] = []
     conversation_parts: list[str] = []
 
-    if instructions:
+    if instructions and not skip_system_prompt:
         system_parts.append(instructions)
 
     for msg in messages:
         if isinstance(msg, ModelRequest):
             for part in msg.parts:
                 if isinstance(part, SystemPromptPart):
-                    system_parts.append(part.content)
+                    if not skip_system_prompt:
+                        system_parts.append(part.content)
                 elif isinstance(part, UserPromptPart):
                     text = _extract_user_text(part)
                     if text:

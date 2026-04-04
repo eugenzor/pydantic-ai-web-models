@@ -34,11 +34,14 @@ flowchart TD
 2. `format_messages()` flattens the message list into a single text prompt (see
    [Message Formatting](#message-formatting) below).
 3. If `output_type` is set, a JSON schema instruction is appended to the prompt.
-4. The prompt and the model identifier (`provider:model_name`) are submitted to the Temporal
-   `LLMInvokeWorkflow` via the Temporal client.
-5. The workflow executes on the worker, which invokes the web-based LLM and returns the
-   response text.
-6. For plain text requests, the response text is wrapped in a `ModelResponse` and returned.
+4. The prompt, the model identifier (`provider:model_name`), and an optional `thread_id` (see
+   below) are submitted to the Temporal `LLMInvokeWorkflow` via the Temporal client.
+5. The workflow executes on the worker, which invokes the web-based LLM and returns a result
+   dict (e.g. `response`, `thread_id`, `error` — see [Temporal workflow payload and response](#temporal-workflow-payload-and-response)).
+6. For plain text requests, on **success** the response text is wrapped in a `ModelResponse`
+   and returned; `thread_id` from the worker is copied onto `ModelResponse.metadata`. Read it
+   as `result.response.metadata["thread_id"]` from [`AgentRunResult.response`](https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.AgentRunResult).
+   If the worker sets a non-empty `error`, `WebModel` raises `WorkflowExecutionError` instead.
 7. For structured output, the JSON extraction pipeline runs first, then the extracted object
    is wrapped as a tool-call response so pydantic-ai can deserialise it.
 
@@ -77,6 +80,38 @@ You are a helpful cooking assistant. Keep answers concise.
 ---
 User: How do I make scrambled eggs?
 ```
+
+**Omitting system prompts (`skip_system_prompt`)**
+
+Per run, you can pass `model_settings={"skip_system_prompt": True}` to `Agent.run()` / `run_sync()`.
+When this flag is `True`, `format_messages()` does not include the `**System Instructions:**` block
+or any `SystemPromptPart` content; user, assistant, and tool lines are formatted as usual. The
+default is `False`. Only the literal boolean `True` enables this behaviour.
+
+## Temporal workflow payload and response
+
+This package targets workers such as **`LLMInvokeWorkflow`** that accept a payload matching your
+worker’s input (at minimum `prompt` and `model`). **This client** sends:
+
+| Field | Required | Sent by this package | Description |
+|---|---|---|---|
+| `prompt` | Yes | Yes | Full text prompt (including JSON schema suffix for structured output). |
+| `model` | Yes | Yes | Model id, e.g. `google-web:gemini-3-flash`. |
+| `thread_id` | No | When set in `model_settings` | Non-empty string after strip; continues a server-side conversation. |
+
+Your worker may support **extra** fields (e.g. `entering_mode`) on the same input type. **They are not
+forwarded** by `pydantic-ai-web-models` today; extend `WebModel` or your wrapper if you need them.
+
+The workflow **result** should look like your worker’s output type (e.g. `LLMInvokeResult`), typically
+serialised as a dict:
+
+| Field | Description |
+|---|---|
+| `response` | Model text (assistant content). |
+| `thread_id` | Conversation id from the web UI; on success this is copied to `ModelResponse.metadata["thread_id"]`. |
+| `error` | Empty on success. If non-empty, `WebModel` raises [`WorkflowExecutionError`](api/exceptions.md) and no assistant `ModelResponse` is returned. |
+
+Workers that raise (e.g. `ApplicationError`) before returning also surface as exceptions to the caller.
 
 **Binary content**
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Any
 from uuid import uuid4
 
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
@@ -22,6 +23,20 @@ from .structured import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_web_model_settings(
+    model_settings: ModelSettings | None,
+) -> tuple[str | None, bool]:
+    """Extract ``thread_id`` and ``skip_system_prompt`` from merged model settings."""
+    if not model_settings:
+        return None, False
+    raw_tid = model_settings.get("thread_id")
+    thread_id: str | None = None
+    if isinstance(raw_tid, str) and raw_tid.strip():
+        thread_id = raw_tid.strip()
+    skip_system = model_settings.get("skip_system_prompt") is True
+    return thread_id, skip_system
 
 
 class WebModel(Model):
@@ -122,11 +137,19 @@ class WebModel(Model):
     ) -> ModelResponse:
         """Make a request via Temporal LLMInvokeWorkflow."""
         output_tools = model_request_parameters.output_tools
+        thread_id, skip_system_prompt = _parse_web_model_settings(model_settings)
 
         # Build prompt
-        prompt = format_messages(messages)
+        prompt = format_messages(messages, skip_system_prompt=skip_system_prompt)
         if output_tools:
             prompt += build_json_schema_instruction(output_tools[0])
+
+        workflow_input: dict[str, Any] = {
+            "prompt": prompt,
+            "model": self.model_name,
+        }
+        if thread_id:
+            workflow_input["thread_id"] = thread_id
 
         # Execute workflow
         client = await self._get_temporal_client()
@@ -135,10 +158,7 @@ class WebModel(Model):
         try:
             result = await client.execute_workflow(  # type: ignore[union-attr]
                 self._temporal_config.workflow_name,
-                {
-                    "prompt": prompt,
-                    "model": self.model_name,
-                },
+                workflow_input,
                 id=workflow_id,
                 task_queue=self._temporal_config.task_queue,
             )
@@ -163,6 +183,13 @@ class WebModel(Model):
             output_tokens=len(response_text) // 4,
         )
 
+        raw_out_tid = result.get("thread_id")
+        response_metadata = (
+            {"thread_id": raw_out_tid.strip()}
+            if isinstance(raw_out_tid, str) and raw_out_tid.strip()
+            else None
+        )
+
         # Parse response
         if output_tools:
             parsed = extract_json_from_response(response_text)
@@ -172,6 +199,7 @@ class WebModel(Model):
                 model_name=self.model_name,
                 timestamp=datetime.now(timezone.utc),
                 usage=usage,
+                metadata=response_metadata,
             )
 
         return ModelResponse(
@@ -179,4 +207,5 @@ class WebModel(Model):
             model_name=self.model_name,
             timestamp=datetime.now(timezone.utc),
             usage=usage,
+            metadata=response_metadata,
         )

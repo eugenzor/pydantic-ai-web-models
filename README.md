@@ -433,9 +433,9 @@ WebModel.request()
     v
 Temporal LLMInvokeWorkflow
     |
-    +-- prompt + model string sent to Temporal worker
+    +-- prompt + model (+ optional thread_id) sent to Temporal worker
     +-- worker invokes web LLM (OpenAI/Google web interface)
-    +-- response text returned
+    +-- response text returned (+ optional thread_id -> ModelResponse.metadata)
     |
     v
 WebModel.request()
@@ -446,6 +446,24 @@ WebModel.request()
     v
 ModelResponse (returned to pydantic-ai)
 ```
+
+## Thread ID and `model_settings`
+
+Optional keys in `model_settings` (per `Agent.run` / `run_sync` or on the agent) are forwarded by this provider:
+
+- **`thread_id`** (`str`) — When non-empty, included in the `LLMInvokeWorkflow` input so your worker can resume a server-side browser/chat session.
+- **`skip_system_prompt`** (`bool`, default `False`) — When `True`, system instructions are not embedded in the text prompt sent to Temporal (conversation turns are unchanged).
+
+On **success**, workers that return `response`, `thread_id`, and `error` (empty on success) — for example `LLMInvokeResult` from `LLMInvokeWorkflow` — cause the assistant `ModelResponse` to carry `metadata["thread_id"]`. Read it from [`result.response`](https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.AgentRunResult), not from `result.metadata` (that is only for [`Agent.run(..., metadata=...)`](https://ai.pydantic.dev)):
+
+```python
+result = agent.run_sync("Hello!")
+tid = result.response.metadata["thread_id"]
+```
+
+If the workflow returns a non-empty `error`, this provider raises **`WorkflowExecutionError`** (no assistant message). Your worker may also raise before returning; handle those as usual.
+
+Optional `thread_id` in `model_settings` is forwarded on the workflow input; omit it for a new conversation.
 
 ## Limitations
 

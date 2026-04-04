@@ -72,3 +72,16 @@ without reconnecting.
     concurrently before the client has been initialised, only one will perform the connection;
     the others will wait and then reuse the client once it is ready. The lock is per-instance,
     so different `WebModel` objects create their clients independently.
+
+## Per-run `model_settings` extensions
+
+Pydantic AI merges `model_settings` from the agent constructor and each `run()` / `run_sync()` call and passes the result to `WebModel.request()`. Besides standard keys (`temperature`, `max_tokens`, …), this package recognises:
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `thread_id` | `str` | (omitted) | If non-empty after stripping, included in the Temporal workflow input so the worker can continue a server-side session. |
+| `skip_system_prompt` | `bool` | `False` | If exactly `True`, `format_messages()` omits system instructions from the prompt sent to Temporal. |
+
+When the workflow completes **successfully** with a result like your worker’s `LLMInvokeResult` (`response`, `thread_id`, `error` empty), `WebModel` sets `ModelResponse.metadata` to `{"thread_id": "<value>"}` on the assistant message. Read it with **`result.response.metadata["thread_id"]`** ([`AgentRunResult.response`](https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.AgentRunResult)). If `error` is non-empty, `WebModel` raises **`WorkflowExecutionError`** before any assistant response is produced. The same `ModelResponse` is also listed in `result.new_messages()` / `all_messages()` when you need the full step.
+
+See [Conversations: Server-side thread](../guides/conversations.md#server-side-thread-thread_id) and [Architecture: workflow I/O](../architecture.md#temporal-workflow-payload-and-response).

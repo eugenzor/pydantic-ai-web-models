@@ -65,6 +65,51 @@ def test_instructions_parameter_included():
     assert "Always respond in French" in result
 
 
+def test_skip_system_prompt_omits_system_block_single_turn():
+    messages = [
+        ModelRequest(
+            parts=[
+                SystemPromptPart(content="Be concise"),
+                UserPromptPart(content="Hello!"),
+            ]
+        )
+    ]
+    result = format_messages(messages, skip_system_prompt=True)
+    assert "**System Instructions:**" not in result
+    assert "Be concise" not in result
+    assert result == "Hello!"
+
+
+def test_skip_system_prompt_omits_instructions_parameter():
+    messages = [ModelRequest(parts=[UserPromptPart(content="Test")])]
+    result = format_messages(
+        messages,
+        instructions="Always respond in French",
+        skip_system_prompt=True,
+    )
+    assert "French" not in result
+    assert result == "Test"
+
+
+def test_skip_system_prompt_multi_turn_keeps_conversation():
+    messages = [
+        ModelRequest(
+            parts=[
+                SystemPromptPart(content="Be brief"),
+                UserPromptPart(content="Hi"),
+            ]
+        ),
+        _response(TextPart(content="Hey!")),
+        ModelRequest(parts=[UserPromptPart(content="Bye")]),
+    ]
+    result = format_messages(messages, skip_system_prompt=True)
+    assert "**System Instructions:**" not in result
+    assert "Be brief" not in result
+    assert "User: Hi" in result
+    assert "Assistant: Hey!" in result
+    assert "User: Bye" in result
+
+
 def test_multi_turn_uses_prefixed_format():
     messages = [
         ModelRequest(parts=[UserPromptPart(content="Hi")]),

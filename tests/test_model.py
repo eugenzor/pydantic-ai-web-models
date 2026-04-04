@@ -1,7 +1,13 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pydantic_ai.messages import ModelRequest, TextPart, ToolCallPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelRequest,
+    SystemPromptPart,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 
 from pydantic_ai_web_models.config import TemporalConfig
 from pydantic_ai_web_models.exceptions import WorkflowExecutionError
@@ -86,6 +92,141 @@ async def test_request_returns_text_part():
     assert len(response.parts) == 1
     assert isinstance(response.parts[0], TextPart)
     assert response.parts[0].content == "Hello from the model!"
+    assert response.metadata is None
+
+
+@pytest.mark.asyncio
+async def test_request_includes_thread_id_in_workflow_payload():
+    model = _make_model()
+    captured: dict = {}
+
+    async def fake_execute(workflow_name, payload, *, id, task_queue):
+        captured.update(payload)
+        return {"response": "ok", "error": ""}
+
+    client = MagicMock()
+    client.execute_workflow = fake_execute
+    model._client = client
+
+    messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
+    await model.request(messages, {"thread_id": "session-abc"}, _request_params())
+
+    assert captured.get("thread_id") == "session-abc"
+    assert captured.get("prompt") == "Hi"
+
+
+@pytest.mark.asyncio
+async def test_request_strips_and_skips_blank_thread_id():
+    model = _make_model()
+    captured: dict = {}
+
+    async def fake_execute(workflow_name, payload, *, id, task_queue):
+        captured.update(payload)
+        return {"response": "ok", "error": ""}
+
+    client = MagicMock()
+    client.execute_workflow = fake_execute
+    model._client = client
+
+    messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
+    await model.request(messages, {"thread_id": "  \t "}, _request_params())
+
+    assert "thread_id" not in captured
+
+
+@pytest.mark.asyncio
+async def test_request_skip_system_prompt_in_model_settings():
+    model = _make_model()
+    captured: dict = {}
+
+    async def fake_execute(workflow_name, payload, *, id, task_queue):
+        captured.update(payload)
+        return {"response": "ok", "error": ""}
+
+    client = MagicMock()
+    client.execute_workflow = fake_execute
+    model._client = client
+
+    messages = [
+        ModelRequest(
+            parts=[
+                SystemPromptPart(content="SYS"),
+                UserPromptPart(content="Hi"),
+            ]
+        )
+    ]
+    await model.request(
+        messages,
+        {"skip_system_prompt": True},
+        _request_params(),
+    )
+
+    assert "**System Instructions:**" not in captured["prompt"]
+    assert "SYS" not in captured["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_request_skip_system_prompt_string_not_truthy():
+    """Only literal True enables skip_system_prompt (not a truthy string)."""
+    model = _make_model()
+    captured: dict = {}
+
+    async def fake_execute(workflow_name, payload, *, id, task_queue):
+        captured.update(payload)
+        return {"response": "ok", "error": ""}
+
+    client = MagicMock()
+    client.execute_workflow = fake_execute
+    model._client = client
+
+    messages = [
+        ModelRequest(
+            parts=[
+                SystemPromptPart(content="SYS"),
+                UserPromptPart(content="Hi"),
+            ]
+        )
+    ]
+    await model.request(
+        messages,
+        {"skip_system_prompt": "yes"},
+        _request_params(),
+    )
+
+    assert "**System Instructions:**" in captured["prompt"]
+    assert "SYS" in captured["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_request_response_thread_id_in_metadata():
+    model = _make_model()
+    model._client = _mock_client(
+        {"response": "Hello!", "error": "", "thread_id": "out-xyz"}
+    )
+    messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
+
+    response = await model.request(messages, None, _request_params())
+
+    assert response.metadata == {"thread_id": "out-xyz"}
+
+
+@pytest.mark.asyncio
+async def test_request_structured_output_includes_thread_id_metadata():
+    model = _make_model()
+    model._client = _mock_client(
+        {"response": '{"name": "Bob"}', "error": "", "thread_id": "t-1"}
+    )
+
+    output_tool = MagicMock()
+    output_tool.name = "final_result"
+    output_tool.parameters_json_schema = {"type": "object", "properties": {}}
+
+    messages = [ModelRequest(parts=[UserPromptPart(content="Who?")])]
+    response = await model.request(
+        messages, None, _request_params(output_tools=[output_tool])
+    )
+
+    assert response.metadata == {"thread_id": "t-1"}
 
 
 @pytest.mark.asyncio

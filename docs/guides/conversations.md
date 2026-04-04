@@ -85,3 +85,33 @@ single text prompt. The format depends on how many turns are present:
     limit is determined by the web-based LLM's context window. If a conversation grows too long
     the workflow may return an error or a truncated response. Consider summarising older turns
     before passing them as history.
+
+## Server-side thread (`thread_id`)
+
+If your Temporal worker returns conversation handles (for example `LLMInvokeWorkflow` → `LLMInvokeResult` with `response`, `thread_id`, and `error`), you can **continue the chat in the browser** by passing **`thread_id`** on the next run. The new user text goes in `prompt` only; you do **not** need `message_history` on the agent if the worker session holds prior turns.
+
+Use pydantic-ai’s **`model_settings`** (merged into the dict passed to the model each request). Read the handle from **`result.response.metadata`** — not from **`result.metadata`**, which is only for [`Agent.run(..., metadata=...)`](https://ai.pydantic.dev).
+
+```python
+result1 = await agent.run("First question")
+tid = result1.response.metadata["thread_id"]
+
+result2 = await agent.run(
+    "Follow-up",
+    model_settings={"thread_id": tid, "skip_system_prompt": True},
+)
+```
+
+```python
+result = agent.run_sync("What is the last human mission to the Moon?")
+tid = result.response.metadata["thread_id"]
+```
+
+On **success**, workers following that contract set `error` to `""` and return a `thread_id`; `WebModel` copies it onto the assistant [`ModelResponse`](https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse) as `metadata["thread_id"]`. On **failure** (non-empty `error` in the workflow result), `WebModel` raises **[`WorkflowExecutionError`](../api/exceptions.md)** — you do not get an assistant response to read `thread_id` from. Catch that and **[`TemporalConnectionError`](../api/exceptions.md)** like any other agent error.
+
+- **`thread_id`** — forwarded to the workflow input when it is a non-empty string (whitespace is stripped).
+- **`skip_system_prompt`** — when `True`, system instructions are omitted from the prompt sent to Temporal; use when the web session already has the system context.
+
+For runs that produce **several** model replies in one agent step, you can still inspect [`result.new_messages()`](https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.AgentRunResult) / `all_messages()`.
+
+Static type checkers may not know about `thread_id` / `skip_system_prompt` on `ModelSettings`; they are passed at runtime. Use `typing.cast` or a small `TypedDict` if you want stricter typing.

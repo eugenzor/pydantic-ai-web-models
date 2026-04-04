@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-04
+
+### Added
+
+#### Core
+
+- **`thread_id` via `model_settings`** — optional non-empty string (whitespace stripped) included in the Temporal workflow payload so workers can continue a server-side browser/chat thread (e.g. `LLMInvokeWorkflow` input).
+- **`skip_system_prompt` via `model_settings`** — when the value is exactly `True`, `format_messages()` omits the `**System Instructions:**` block and all `SystemPromptPart` content from the prompt string sent to Temporal; conversation turns are unchanged.
+- **Workflow `thread_id` on success** — when the workflow result includes a non-empty `thread_id` string and `error` is empty, it is copied onto the assistant [`ModelResponse`](https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse) as `metadata["thread_id"]`. Read it with `result.response.metadata["thread_id"]` from pydantic-ai’s [`AgentRunResult.response`](https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.AgentRunResult). Non-empty `error` still raises `WorkflowExecutionError`.
+
+
 ## [0.1.0] - 2026-04-01
 
 ### Added
@@ -45,10 +56,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TemporalConnectionError` — raised when the Temporal server cannot be reached.
 - `WorkflowExecutionError` — raised when the workflow starts but fails during execution; exposes `workflow_id` for Temporal UI lookup.
 - `JSONParseError` — raised when structured output parsing fails after all three extraction strategies are exhausted; exposes `raw_text` for inspection.
-
-#### Documentation
-
-- Full MkDocs site with Getting Started, Configuration, Guides (text responses, structured output, conversations, model comparison), API Reference (`WebModel`, `TemporalConfig`, exceptions), and Architecture pages.
-- Architecture diagram showing the full request flow from `Agent.run()` through Temporal to the web LLM and back.
-
-[0.1.0]: https://github.com/eugeneagi/pydantic-ai-web-models/releases/tag/v0.1.0
