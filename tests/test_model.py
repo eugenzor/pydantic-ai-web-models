@@ -16,7 +16,7 @@ from pydantic_ai_web_models.model import WebModel
 _CFG = TemporalConfig(_env_file=None)
 
 
-def _make_model(provider="openai-web", model_name="gpt-5-3"):
+def _make_model(provider="openai-web", model_name="gpt-5-5"):
     return WebModel(provider=provider, model_name=model_name, temporal_config=_CFG)
 
 
@@ -40,7 +40,7 @@ def _request_params(output_tools=None):
 
 def test_unknown_provider_raises():
     with pytest.raises(ValueError, match="Unknown provider"):
-        WebModel(provider="bad-provider", model_name="gpt-5-3", temporal_config=_CFG)
+        WebModel(provider="bad-provider", model_name="gpt-5-5", temporal_config=_CFG)
 
 
 def test_unknown_model_raises():
@@ -64,8 +64,8 @@ def test_valid_construction_google():
 
 
 def test_model_name_property():
-    model = _make_model("openai-web", "gpt-5-4-standard")
-    assert model.model_name == "openai-web:gpt-5-4-standard"
+    model = _make_model("openai-web", "gpt-5-5")
+    assert model.model_name == "openai-web:gpt-5-5"
 
 
 def test_system_property_openai():

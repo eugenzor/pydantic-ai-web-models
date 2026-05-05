@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 AVAILABLE_MODELS: dict[str, list[str]] = {
     "google-web": ["gemini-3-flash", "gemini-3-flash-thinking", "gemini-3.1-pro"],
-    "openai-web": ["gpt-5-3", "gpt-5-4-standard", "gpt-5-4-extended"],
+    "openai-web": ["gpt-5-3", "gpt-5-5"],
 }
 
 

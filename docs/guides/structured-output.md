@@ -63,7 +63,7 @@ class Person(BaseModel):
 
 
 agent = Agent(
-    model="openai-web:gpt-5-4-standard",
+    model="openai-web:gpt-5-5",
     output_type=Person,
 )
 result = agent.run_sync(
@@ -102,7 +102,7 @@ class ReviewAnalysis(BaseModel):
 
 
 agent = Agent(
-    model="openai-web:gpt-5-4-standard",
+    model="openai-web:gpt-5-5",
     output_type=ReviewAnalysis,
 )
 result = agent.run_sync(

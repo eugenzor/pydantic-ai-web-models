@@ -64,5 +64,4 @@ print(result.data)
 | `google-web` | `google-web:gemini-3-flash-thinking` | Gemini 3 Flash with extended reasoning |
 | `google-web` | `google-web:gemini-3.1-pro` | Gemini 3.1 Pro — highest capability Google model |
 | `openai-web` | `openai-web:gpt-5-3` | GPT-5-3 — fast OpenAI model |
-| `openai-web` | `openai-web:gpt-5-4-standard` | GPT-5-4 Standard — balanced OpenAI model |
-| `openai-web` | `openai-web:gpt-5-4-extended` | GPT-5-4 Extended — maximum capability OpenAI model |
+| `openai-web` | `openai-web:gpt-5-5` | GPT-5-5 — latest OpenAI model |

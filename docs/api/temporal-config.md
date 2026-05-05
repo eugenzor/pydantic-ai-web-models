@@ -89,8 +89,7 @@ AVAILABLE_MODELS = {
     ],
     "openai-web": [
         "gpt-5-3",
-        "gpt-5-4-standard",
-        "gpt-5-4-extended",
+        "gpt-5-5",
     ],
 }
 ```

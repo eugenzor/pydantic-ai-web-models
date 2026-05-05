@@ -19,7 +19,7 @@ MODELS = [
     "google-web:gemini-3-flash",
     "google-web:gemini-3.1-pro",
     "openai-web:gpt-5-3",
-    "openai-web:gpt-5-4-standard",
+    "openai-web:gpt-5-5",
 ]
 
 
@@ -60,7 +60,7 @@ roughly equal to the slowest individual model rather than their sum.
 
     MODELS = [
         "google-web:gemini-3-flash",
-        "openai-web:gpt-5-4-standard",
+        "openai-web:gpt-5-5",
     ]
 
 

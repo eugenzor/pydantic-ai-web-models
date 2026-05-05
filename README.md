@@ -53,8 +53,7 @@ Importing `pydantic_ai_web_models` automatically registers the `openai-web` and 
 | `google-web`  | `google-web:gemini-3-flash-thinking`  | Gemini 3 Flash with thinking   |
 | `google-web`  | `google-web:gemini-3.1-pro`           | Gemini 3.1 Pro                 |
 | `openai-web`  | `openai-web:gpt-5-3`                  | GPT-5-3                        |
-| `openai-web`  | `openai-web:gpt-5-4-standard`        | GPT-5-4 Standard               |
-| `openai-web`  | `openai-web:gpt-5-4-extended`        | GPT-5-4 Extended               |
+| `openai-web`  | `openai-web:gpt-5-5`                  | GPT-5-5                        |
 
 ## Usage Examples
 
@@ -138,7 +137,7 @@ class Person(BaseModel):
 
 
 agent = Agent(
-    model="openai-web:gpt-5-4-standard",
+    model="openai-web:gpt-5-5",
     output_type=Person,
 )
 result = agent.run_sync(
@@ -238,7 +237,7 @@ class ReviewAnalysis(BaseModel):
 
 
 agent = Agent(
-    model="openai-web:gpt-5-4-standard",
+    model="openai-web:gpt-5-5",
     output_type=ReviewAnalysis,
 )
 result = agent.run_sync(
