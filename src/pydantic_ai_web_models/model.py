@@ -14,7 +14,11 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
 from .config import AVAILABLE_MODELS, TemporalConfig, get_default_config
-from .exceptions import TemporalConnectionError, WorkflowExecutionError
+from .exceptions import (
+    ModelLimitReachedError,
+    TemporalConnectionError,
+    WorkflowExecutionError,
+)
 from .messages import format_messages
 from .structured import (
     build_json_schema_instruction,
@@ -129,6 +133,36 @@ class WebModel(Model):
                     f"Failed to connect to Temporal: {exc}"
                 ) from exc
 
+    def _translate_limit_reached(
+        self, exc: BaseException, workflow_id: str
+    ) -> ModelLimitReachedError | None:
+        """Return a ``ModelLimitReachedError`` if ``exc`` is a LIMIT_REACHED failure.
+
+        Workflow-side ``ApplicationError(type="LIMIT_REACHED", non_retryable=True)``
+        surfaces on the client as ``WorkflowFailureError`` whose ``cause`` is the
+        original ``ApplicationError``. Returns ``None`` for unrelated failures so
+        the caller can apply its default wrapping.
+        """
+        try:
+            from temporalio.client import WorkflowFailureError
+            from temporalio.exceptions import ApplicationError
+        except ImportError:
+            return None
+
+        cause: BaseException | None = exc
+        if isinstance(exc, WorkflowFailureError):
+            cause = exc.cause
+        if not isinstance(cause, ApplicationError) or cause.type != "LIMIT_REACHED":
+            return None
+
+        suggestion = str(cause.details[0]) if cause.details else None
+        return ModelLimitReachedError(
+            cause.message,
+            suggestion=suggestion,
+            model_name=self.model_name,
+            workflow_id=workflow_id,
+        )
+
     async def request(
         self,
         messages: list[ModelMessage],
@@ -163,8 +197,9 @@ class WebModel(Model):
                 task_queue=self._temporal_config.task_queue,
             )
         except Exception as exc:
-            if isinstance(exc, (TemporalConnectionError, WorkflowExecutionError)):
-                raise
+            limit_error = self._translate_limit_reached(exc, workflow_id)
+            if limit_error is not None:
+                raise limit_error from exc
             raise WorkflowExecutionError(
                 f"Workflow execution failed: {exc}",
                 workflow_id=workflow_id,

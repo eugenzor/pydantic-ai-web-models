@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-07
+
+### Added
+
+#### Error Handling
+
+- **`ModelLimitReachedError`** — new exception raised when the upstream model reports that its quota or limit is reached. The Temporal worker signals this by raising `temporalio.exceptions.ApplicationError("Model limit is reached", "Try another model", type="LIMIT_REACHED", non_retryable=True)`; the library now translates that workflow failure into `ModelLimitReachedError` so callers can react in plain Python (typically by switching to a different model) without depending on Temporal exception types. Exposes `suggestion`, `model_name`, and `workflow_id` attributes.
+
+### Fixed
+
+#### Core
+
+- `WebModel.request()` no longer raises `NameError` on workflow failures: the previous build referenced an unimported `WorkflowFailureError` in its except branch. The handler is now driven by a `_translate_limit_reached` helper that lazy-imports the Temporal types and falls back to wrapping unrelated failures as `WorkflowExecutionError` as before.
+
+
 ## [0.3.0] - 2026-05-05
 
 ### Changed

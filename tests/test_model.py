@@ -10,7 +10,10 @@ from pydantic_ai.messages import (
 )
 
 from pydantic_ai_web_models.config import TemporalConfig
-from pydantic_ai_web_models.exceptions import WorkflowExecutionError
+from pydantic_ai_web_models.exceptions import (
+    ModelLimitReachedError,
+    WorkflowExecutionError,
+)
 from pydantic_ai_web_models.model import WebModel
 
 _CFG = TemporalConfig(_env_file=None)
@@ -286,6 +289,56 @@ async def test_request_execute_workflow_exception_wrapped():
     messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
 
     with pytest.raises(WorkflowExecutionError, match="network error"):
+        await model.request(messages, None, _request_params())
+
+
+@pytest.mark.asyncio
+async def test_request_translates_limit_reached_application_error():
+    """A WorkflowFailureError caused by ApplicationError(type="LIMIT_REACHED") is
+    translated to ModelLimitReachedError with details preserved."""
+    from temporalio.client import WorkflowFailureError
+    from temporalio.exceptions import ApplicationError
+
+    cause = ApplicationError(
+        "Model limit is reached",
+        "Try another model",
+        type="LIMIT_REACHED",
+        non_retryable=True,
+    )
+    failure = WorkflowFailureError(cause=cause)
+
+    model = _make_model("openai-web", "gpt-5-5")
+    client = MagicMock()
+    client.execute_workflow = AsyncMock(side_effect=failure)
+    model._client = client
+    messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
+
+    with pytest.raises(ModelLimitReachedError) as exc_info:
+        await model.request(messages, None, _request_params())
+
+    err = exc_info.value
+    assert str(err) == "Model limit is reached"
+    assert err.suggestion == "Try another model"
+    assert err.model_name == "openai-web:gpt-5-5"
+    assert err.workflow_id is not None and err.workflow_id.startswith("llm-")
+
+
+@pytest.mark.asyncio
+async def test_request_other_application_error_not_translated():
+    """ApplicationError with a different type falls through to WorkflowExecutionError."""
+    from temporalio.client import WorkflowFailureError
+    from temporalio.exceptions import ApplicationError
+
+    cause = ApplicationError("some other failure", type="OTHER")
+    failure = WorkflowFailureError(cause=cause)
+
+    model = _make_model()
+    client = MagicMock()
+    client.execute_workflow = AsyncMock(side_effect=failure)
+    model._client = client
+    messages = [ModelRequest(parts=[UserPromptPart(content="Hi")])]
+
+    with pytest.raises(WorkflowExecutionError):
         await model.request(messages, None, _request_params())
 
 

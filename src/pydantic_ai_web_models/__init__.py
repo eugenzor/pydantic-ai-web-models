@@ -8,6 +8,7 @@ from .config import (
 )
 from .exceptions import (
     JSONParseError,
+    ModelLimitReachedError,
     TemporalConnectionError,
     WebModelError,
     WorkflowExecutionError,
@@ -20,6 +21,7 @@ register_web_models()
 __all__ = [
     "AVAILABLE_MODELS",
     "JSONParseError",
+    "ModelLimitReachedError",
     "TemporalConfig",
     "TemporalConnectionError",
     "WebModel",
